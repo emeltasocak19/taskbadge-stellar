@@ -47,6 +47,17 @@ function readError(error: unknown) {
   return "Unexpected error.";
 }
 
+function isAccountMissing(error: unknown) {
+  return readError(error).toLowerCase().includes("account not found");
+}
+
+async function fundTestnetAccount(publicKey: string) {
+  const response = await fetch(`https://friendbot.stellar.org?addr=${publicKey}`);
+  if (!response.ok) {
+    throw new Error("Testnet funding failed. Please try Friendbot manually.");
+  }
+}
+
 export default function App() {
   const [address, setAddress] = useState("");
   const [network, setNetwork] = useState("TESTNET");
@@ -73,7 +84,15 @@ export default function App() {
       if (!walletAddress) return;
 
       const readClient = createTaskBadgeClient(walletAddress);
-      const [statusTxs, countTx, totalTx, networkDetails] = await Promise.all([
+      const networkDetails = await getNetworkDetails();
+      if ("error" in networkDetails && networkDetails.error) {
+        throw new Error(String(networkDetails.error));
+      }
+      if (networkDetails.networkPassphrase !== NETWORK_PASSPHRASE) {
+        throw new Error("Please switch Freighter to Testnet and connect again.");
+      }
+
+      const [statusTxs, countTx, totalTx] = await Promise.all([
         Promise.all(
           taskOptions.map(async (option) => {
             const tx = await readClient.has_task({
@@ -85,12 +104,7 @@ export default function App() {
         ),
         readClient.get_task_count({ user: walletAddress }),
         readClient.get_total_tasks(),
-        getNetworkDetails(),
       ]);
-
-      if ("error" in networkDetails && networkDetails.error) {
-        throw new Error(String(networkDetails.error));
-      }
 
       const nextStatus = Object.fromEntries(statusTxs);
       setTaskStatus(nextStatus);
@@ -126,7 +140,15 @@ export default function App() {
       }
 
       setAddress(walletAddress);
-      await refreshTaskData(walletAddress, selectedTask);
+      try {
+        await refreshTaskData(walletAddress, selectedTask);
+      } catch (refreshError) {
+        if (!isAccountMissing(refreshError)) throw refreshError;
+
+        setStatus("Funding Testnet wallet");
+        await fundTestnetAccount(walletAddress);
+        await refreshTaskData(walletAddress, selectedTask);
+      }
       setStatus("Wallet connected");
     } catch (nextError) {
       setError(readError(nextError));
