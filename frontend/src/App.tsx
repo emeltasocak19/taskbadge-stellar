@@ -1,12 +1,13 @@
 import {
-  Award,
+  BadgeCheck,
+  BookOpen,
   CheckCircle2,
-  ClipboardCheck,
+  Circle,
+  ClipboardList,
   ExternalLink,
   Loader2,
   RefreshCw,
   Rocket,
-  ShieldCheck,
   Wallet,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -51,6 +52,7 @@ export default function App() {
   const [network, setNetwork] = useState("TESTNET");
   const [selectedTask, setSelectedTask] = useState("Read Docs");
   const [hasSelectedTask, setHasSelectedTask] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<Record<string, boolean>>({});
   const [taskCount, setTaskCount] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
   const [status, setStatus] = useState("Connect Freighter to track tasks");
@@ -61,14 +63,26 @@ export default function App() {
   const walletLabel = connected ? shortAddress(address) : "Not connected";
   const activeTask = taskOptions.find((task) => task.label === selectedTask);
   const client = useMemo(() => createTaskBadgeClient(address), [address]);
+  const progressPercent = Math.min(
+    100,
+    Math.round((taskCount / taskOptions.length) * 100),
+  );
 
   const refreshTaskData = useCallback(
     async (walletAddress = address, task = selectedTask) => {
       if (!walletAddress) return;
 
       const readClient = createTaskBadgeClient(walletAddress);
-      const [hasTaskTx, countTx, totalTx, networkDetails] = await Promise.all([
-        readClient.has_task({ user: walletAddress, task }),
+      const [statusTxs, countTx, totalTx, networkDetails] = await Promise.all([
+        Promise.all(
+          taskOptions.map(async (option) => {
+            const tx = await readClient.has_task({
+              user: walletAddress,
+              task: option.label,
+            });
+            return [option.label, Boolean(tx.result)] as const;
+          }),
+        ),
         readClient.get_task_count({ user: walletAddress }),
         readClient.get_total_tasks(),
         getNetworkDetails(),
@@ -78,7 +92,9 @@ export default function App() {
         throw new Error(String(networkDetails.error));
       }
 
-      setHasSelectedTask(Boolean(hasTaskTx.result));
+      const nextStatus = Object.fromEntries(statusTxs);
+      setTaskStatus(nextStatus);
+      setHasSelectedTask(Boolean(nextStatus[task]));
       setTaskCount(Number(countTx.result));
       setTotalTasks(Number(totalTx.result));
       setNetwork(networkDetails.network ?? "TESTNET");
@@ -121,10 +137,10 @@ export default function App() {
 
   async function selectTask(task: string) {
     setSelectedTask(task);
+    setHasSelectedTask(Boolean(taskStatus[task]));
     setStatus(`Selected task: ${task}`);
 
     if (!address) {
-      setHasSelectedTask(false);
       return;
     }
 
@@ -180,153 +196,180 @@ export default function App() {
   }
 
   return (
-    <main className="shell">
-      <section className="topbar">
-        <div>
-          <p className="eyebrow">Stellar Soroban Progress dApp</p>
-          <h1>TaskBadge</h1>
-        </div>
-        <div className="actions">
-          {connected && (
-            <button
-              className="icon-button"
-              onClick={refresh}
-              disabled={isBusy}
-              title="Refresh"
-              type="button"
-            >
-              <RefreshCw size={18} />
-            </button>
-          )}
-          <button
-            className="primary-button"
-            onClick={connectWallet}
-            disabled={isBusy}
-            type="button"
-          >
-            {isBusy ? <Loader2 className="spin" size={18} /> : <Wallet size={18} />}
-            {connected ? walletLabel : "Connect Freighter"}
-          </button>
-        </div>
-      </section>
-
-      {error && <div className="error">{error}</div>}
-
-      <section className="hero">
-        <article className="badge-card">
-          <div className="badge-row">
-            <span>{network}</span>
-            <span>{hasSelectedTask ? "Completed" : "Open task"}</span>
-          </div>
-          <div className="badge-symbol">
-            {hasSelectedTask ? <CheckCircle2 size={58} /> : <Award size={58} />}
-          </div>
-          <p className="eyebrow">Selected task</p>
-          <h2>{selectedTask}</h2>
-          <p className="badge-note">
-            {hasSelectedTask
-              ? "This wallet already holds the badge for this task."
-              : activeTask?.detail}
-          </p>
-        </article>
-
-        <article className="stats-card">
+    <main className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-row">
+          <div className="brand-mark">TB</div>
           <div>
-            <span>Your badges</span>
+            <p className="eyebrow">Stellar Progress</p>
+            <h1>TaskBadge</h1>
+          </div>
+        </div>
+
+        <div className="wallet-card">
+          <span className="label">Wallet</span>
+          <strong>{walletLabel}</strong>
+          <small>{network}</small>
+        </div>
+
+        <div className="metric-stack">
+          <div>
+            <span>Your Badges</span>
             <strong>{taskCount}</strong>
           </div>
           <div>
-            <span>Total badges</span>
+            <span>Total Badges</span>
             <strong>{totalTasks}</strong>
           </div>
           <div>
             <span>Contract</span>
             <strong>{shortAddress(CONTRACT_ID)}</strong>
           </div>
-        </article>
-      </section>
+        </div>
 
-      <section className="workspace">
-        <article className="panel task-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Complete Task</p>
-              <h3>Choose a badge</h3>
-            </div>
-            <ClipboardCheck size={20} />
+        <div className="links">
+          <a href={explorerUrl} target="_blank" rel="noreferrer">
+            Explorer <ExternalLink size={14} />
+          </a>
+          <a href={labUrl} target="_blank" rel="noreferrer">
+            Stellar Lab <ExternalLink size={14} />
+          </a>
+        </div>
+      </aside>
+
+      <section className="board">
+        <header className="board-header">
+          <div>
+            <p className="eyebrow">Workshop Checklist</p>
+            <h2>Complete tasks, collect badges.</h2>
           </div>
-
-          <div className="task-grid">
-            {taskOptions.map((task) => (
+          <div className="actions">
+            {connected && (
               <button
-                className={
-                  selectedTask === task.label ? "task-option active" : "task-option"
-                }
-                key={task.label}
-                onClick={() => selectTask(task.label)}
+                className="icon-button"
+                onClick={refresh}
+                disabled={isBusy}
+                title="Refresh"
                 type="button"
               >
-                <span>{task.label}</span>
-                <small>{task.detail}</small>
+                <RefreshCw size={18} />
               </button>
-            ))}
+            )}
+            <button
+              className="primary-button"
+              onClick={connectWallet}
+              disabled={isBusy}
+              type="button"
+            >
+              {isBusy ? <Loader2 className="spin" size={18} /> : <Wallet size={18} />}
+              {connected ? walletLabel : "Connect Freighter"}
+            </button>
           </div>
+        </header>
 
-          <div className={hasSelectedTask ? "selected-box done" : "selected-box"}>
-            <ShieldCheck size={18} />
-            <span>
-              {connected
-                ? hasSelectedTask
-                  ? "Already completed"
-                  : "Ready to complete"
-                : "Connect wallet first"}
-            </span>
+        {error && <div className="error">{error}</div>}
+
+        <section className="progress-panel">
+          <div className="progress-copy">
+            <ClipboardList size={22} />
+            <div>
+              <span>Progress</span>
+              <strong>
+                {taskCount} / {taskOptions.length} badges
+              </strong>
+            </div>
           </div>
-
-          <button
-            className="primary-button full"
-            onClick={completeTask}
-            disabled={!connected || isBusy || hasSelectedTask}
-            type="button"
-          >
-            {isBusy ? <Loader2 className="spin" size={18} /> : <Rocket size={18} />}
-            Complete on-chain
-          </button>
-        </article>
-
-        <article className="panel contract-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Smart Contract</p>
-              <h3>Task registry</h3>
-            </div>
-            <Award size={20} />
+          <div className="progress-track" aria-label="Task completion progress">
+            <span style={{ width: `${progressPercent}%` }} />
           </div>
+          <small>{status}</small>
+        </section>
 
-          <dl>
-            <div>
-              <dt>Contract ID</dt>
-              <dd>{CONTRACT_ID}</dd>
+        <section className="workspace">
+          <article className="task-list">
+            <div className="section-heading">
+              <BookOpen size={20} />
+              <div>
+                <p className="eyebrow">Tasks</p>
+                <h3>Learning path</h3>
+              </div>
             </div>
-            <div>
-              <dt>Network Passphrase</dt>
-              <dd>{NETWORK_PASSPHRASE}</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>{status}</dd>
-            </div>
-          </dl>
 
-          <div className="links">
-            <a href={explorerUrl} target="_blank" rel="noreferrer">
-              Explorer <ExternalLink size={14} />
-            </a>
-            <a href={labUrl} target="_blank" rel="noreferrer">
-              Stellar Lab <ExternalLink size={14} />
-            </a>
-          </div>
-        </article>
+            {taskOptions.map((task, index) => {
+              const isDone = Boolean(taskStatus[task.label]);
+              const isActive = selectedTask === task.label;
+
+              return (
+                <button
+                  className={[
+                    "task-row",
+                    isActive ? "active" : "",
+                    isDone ? "done" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  key={task.label}
+                  onClick={() => selectTask(task.label)}
+                  type="button"
+                >
+                  <span className="task-index">
+                    {isDone ? <CheckCircle2 size={18} /> : index + 1}
+                  </span>
+                  <span className="task-copy">
+                    <strong>{task.label}</strong>
+                    <small>{task.detail}</small>
+                  </span>
+                  <span className="task-state">
+                    {isDone ? "Done" : isActive ? "Selected" : "Open"}
+                  </span>
+                </button>
+              );
+            })}
+          </article>
+
+          <article className="action-panel">
+            <div className="badge-preview">
+              <div className={hasSelectedTask ? "badge-token done" : "badge-token"}>
+                {hasSelectedTask ? <BadgeCheck size={40} /> : <Circle size={40} />}
+              </div>
+              <p className="eyebrow">Selected Badge</p>
+              <h3>{selectedTask}</h3>
+              <p>{activeTask?.detail}</p>
+            </div>
+
+            <div className={hasSelectedTask ? "selected-box done" : "selected-box"}>
+              <BadgeCheck size={18} />
+              <span>
+                {connected
+                  ? hasSelectedTask
+                    ? "Already completed"
+                    : "Ready to complete"
+                  : "Connect wallet first"}
+              </span>
+            </div>
+
+            <button
+              className="primary-button full"
+              onClick={completeTask}
+              disabled={!connected || isBusy || hasSelectedTask}
+              type="button"
+            >
+              {isBusy ? <Loader2 className="spin" size={18} /> : <Rocket size={18} />}
+              Complete on-chain
+            </button>
+
+            <dl>
+              <div>
+                <dt>Contract ID</dt>
+                <dd>{CONTRACT_ID}</dd>
+              </div>
+              <div>
+                <dt>Network Passphrase</dt>
+                <dd>{NETWORK_PASSPHRASE}</dd>
+              </div>
+            </dl>
+          </article>
+        </section>
       </section>
     </main>
   );
