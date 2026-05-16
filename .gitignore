@@ -1,0 +1,16 @@
+# Rust's output directory
+target
+
+# Local settings
+.soroban
+.stellar
+
+# JavaScript
+node_modules
+dist
+.env
+npm-debug.log*
+
+# Keep generated contract package output for the frontend file dependency.
+!frontend/packages/taskbadge/dist/
+!frontend/packages/taskbadge/dist/**
