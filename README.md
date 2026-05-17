@@ -6,12 +6,13 @@ TaskBadge is a simple Stellar Soroban dApp that lets users mark workshop or hack
 
 - TaskBadge Stellar
 
-## Who Are You
+## About Me
 
 - name: Emel Tasocak
 - Learning smart contract development
 - Building simple Stellar Testnet projects
 - Interested in blockchain-based progress tracking
+- Exploring how on-chain records can support workshops and hackathons
 
 ## Project Details
 
@@ -20,6 +21,19 @@ TaskBadge lets a user connect a Freighter wallet, choose a task, and save that t
 ## Vision
 
 TaskBadge turns learning progress into a small on-chain record. It can help workshops, hackathons, and beginner bootcamps show proof of participation without building a large backend. The project is intentionally simple so new developers can understand wallet signing, smart contract storage, TypeScript bindings, and frontend interaction in one complete app.
+
+## Development Plan
+
+1. Create Soroban storage keys for completed tasks, each user's task count, and total task completions.
+2. Add `complete_task(user, task)` with wallet authorization and duplicate-task protection.
+3. Add read functions: `has_task(user, task)`, `get_task_count(user)`, and `get_total_tasks()`.
+4. Write contract tests for new tasks, duplicate tasks, multiple users, and total counter updates.
+5. Build the React frontend with Freighter wallet connection, task selection, completion status, and progress counters.
+6. Build, generate TypeScript bindings, deploy the contract to Stellar Testnet, and connect the deployed contract ID to the frontend.
+
+## Personal Story
+
+I built TaskBadge to understand how smart contracts can track progress in a simple and useful way. The project helped me practice wallet authorization, unique on-chain records, generated TypeScript bindings, and frontend interaction with a deployed Stellar contract.
 
 ## Smart Contract Functions
 
@@ -32,7 +46,7 @@ TaskBadge turns learning progress into a small on-chain record. It can help work
 
 - Network: Stellar Testnet
 - Contract ID: `CARFQ2FENKLDNAM4IDIWVUDVN7HMEJAQA3745FDS7V4P2HC6OMCLLX4W`
-- Explorer: https://stellar.expert/explorer/testnet/contract/CARFQ2FENKLDNAM4IDIWVUDVN7HMEJAQA3745FDS7V4P2HC6OMCLLX4W
+- Explorer: <https://stellar.expert/explorer/testnet/contract/CARFQ2FENKLDNAM4IDIWVUDVN7HMEJAQA3745FDS7V4P2HC6OMCLLX4W>
 
 ## Tech Stack
 
@@ -86,26 +100,9 @@ Open:
 http://localhost:4324
 ```
 
-## ChatGPT Prompt 1
+## Visual Concept
 
-Write me a project description, in less than 150 simple, straightforward words, for a blockchain project on Stellar. The project lets users connect a wallet and mark learning tasks as completed on-chain.
-
-## ChatGPT Prompt 2
-
-Now, also write a vision statement, in 100 simple, straightforward words, for this project. Talk about how on-chain progress tracking can help students and hackathon builders.
-
-## ChatGPT Prompt 3
-
-Now, write me a software development plan for this project. Mainly focus on smart contract functions, variables, and features. Then mention the frontend. Keep it under 6 steps. Final step can be deployment.
-
-## ChatGPT Prompt 4
-
-Now, write a personal story summary in less than 100 words about building a simple Stellar task badge app as a first smart contract project.
-
-## ChatGPT Prompt 5
-
-Can you also write a draft GitHub README on how to install the project?
-
-## ImgCreator Prompt
-
-Futuristic happy digital painting with a friendly robot mascot in a bright workshop city, completing tasks, collecting glowing badges, simple blockchain lights.
+- Mascot: friendly robot
+- Setting: bright workshop city
+- Physical keywords: completing tasks, collecting glowing badges
+- Art direction: futuristic happy digital painting with clear progress energy, simple blockchain lights, and a builder-friendly mood
